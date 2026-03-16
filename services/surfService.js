@@ -33,8 +33,7 @@ class SurfService {
     return await this.surfAdsLoop();
   }
 
-async login() {
-
+  async login() {
     const emailValue = this.account.username;
     const passValue = this.account.password;
 
@@ -46,52 +45,48 @@ async login() {
     await sleep(4000);
 
     const email = await this.driver.wait(
-        until.elementLocated(By.css("input[placeholder='Email']")),
-        20000
+      until.elementLocated(By.css("input[placeholder='Email']")),
+      20000,
     );
 
     // scroll tới form
     await this.driver.executeScript(
-        "arguments[0].scrollIntoView({block:'center'})",
-        email
+      "arguments[0].scrollIntoView({block:'center'})",
+      email,
     );
 
-    await sleep(random(800,1500));
+    await sleep(random(800, 1500));
 
     console.log("Typing email...");
 
     await email.sendKeys(emailValue);
 
-    await sleep(random(800,1500));
+    await sleep(random(800, 1500));
 
     const pass = await this.driver.findElement(
-        By.css("input[type='password']")
+      By.css("input[type='password']"),
     );
 
     console.log("Typing password...");
 
     await pass.sendKeys(passValue);
 
-    await sleep(random(1000,2000));
+    await sleep(random(1000, 2000));
 
-    const btn = await this.driver.findElement(
-        By.css("button.cp-btn--primary")
-    );
+    const btn = await this.driver.findElement(By.css("button.cp-btn--primary"));
 
     console.log("Click login");
 
     await btn.click();
 
     await this.driver.wait(async () => {
+      const url = await this.driver.getCurrentUrl();
 
-        const url = await this.driver.getCurrentUrl();
-
-        return !url.includes("/login");
-
+      return !url.includes("/login");
     }, 20000);
 
     console.log("Login success:", emailValue);
-}
+  }
 
   async openSurfAds() {
     await this.driver.get("https://www.coinpayu.com/dashboard/ads_surf");
@@ -145,7 +140,7 @@ async login() {
     while (true) {
       try {
         const ads = await this.driver.findElements(
-          By.css(".ags-list-box:not(.gray-all)"),
+          By.css(".ags-list-box:not(.gray-all):not(.completed)"),
         );
 
         console.log("Total ads:", ads.length);
@@ -155,6 +150,7 @@ async login() {
         for (let i = 0; i < ads.length; i++) {
           const box = ads[i];
           const adId = "ad-" + i;
+
           try {
             let clickable;
 
@@ -164,41 +160,16 @@ async login() {
               clickable = await box.findElement(By.css("span"));
             }
 
-            let adUrl = "";
-
-            try {
-              adUrl = await clickable.getAttribute("href");
-            } catch {}
-
-            let adId = null;
-
-            if (adUrl) {
-              const match = adUrl.match(/id=(\d+)/);
-              if (match) {
-                adId = match[1];
-              }
-            }
-
-            if (!adId) {
-              adId = await box.getAttribute("data-id");
-            }
-
-            if (!adId) {
-              adId = await box.getAttribute("id");
-            }
-
-            if (!adId) {
-              console.log("Cannot detect adId → skip");
-              continue;
-            }
-
+            // chỉ skip nếu đã click trước đó
             if (attemptedAds.has(adId)) {
               console.log("Skip attempted ad:", adId);
+
               continue;
             }
 
             if (blockedAds.includes(adId)) {
               console.log("Skip blocked ad:", adId);
+
               continue;
             }
 
@@ -207,7 +178,9 @@ async login() {
               clickable,
               adId,
             });
-          } catch {}
+          } catch (err) {
+            console.log("Ad parse error:", err.message);
+          }
         }
 
         console.log("Available ads:", availableAds.length);
@@ -261,10 +234,8 @@ async login() {
 
             await this.simulateMouse();
 
-            attemptedAds.add(adId);
-
             const oldTabs = await this.driver.getAllWindowHandles();
-
+            attemptedAds.add(adId);
             console.log("Click advertisement");
 
             await clickable.click();

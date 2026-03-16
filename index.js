@@ -69,7 +69,7 @@ cron.schedule("24 19 * * *", async () => {
 
   await runAccounts();
 });
-cron.schedule("40 14 * * *", async () => {
+cron.schedule("59 14 * * *", async () => {
   await randomStart(1); // test delay nhỏ
 
   await runAccounts();
