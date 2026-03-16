@@ -23,51 +23,49 @@ class SurfService {
     this.driver = driver;
     this.account = account;
   }
-async warmupProfile() {
+  async warmupProfile() {
+    console.log("Warming up browser profile...");
 
-  console.log("Warming up browser profile...");
+    // Google search
+    await this.driver.get("https://www.google.com");
+    await sleep(3000);
 
-  // Google search
-  await this.driver.get("https://www.google.com");
-  await sleep(3000);
+    try {
+      const search = await this.driver.findElement(By.name("q"));
+      await search.sendKeys("latest technology news\n");
+    } catch {}
 
-  try {
-    const search = await this.driver.findElement(By.name("q"));
-    await search.sendKeys("latest technology news\n");
-  } catch {}
+    await sleep(5000);
 
-  await sleep(5000);
+    // YouTube video
+    await this.driver.get(
+      "https://www.youtube.com/watch?v=8sVtL0o-v7U&list=RDMM8sVtL0o-v7U&start_radio=1",
+    );
+    await sleep(20000);
 
-  // YouTube video
-  await this.driver.get("https://www.youtube.com/watch?v=8sVtL0o-v7U&list=RDMM8sVtL0o-v7U&start_radio=1");
-  await sleep(20000);
+    // Dailymotion video (xem 5s)
+    await this.driver.get("https://www.dailymotion.com/video/x84sh8y");
+    await sleep(5000);
 
-  // Dailymotion video (xem 5s)
-  await this.driver.get("https://www.dailymotion.com/video/x84sh8y");
-  await sleep(5000);
+    // Trang 24h.com.vn
+    await this.driver.get("https://24h.com.vn/");
+    await sleep(3000);
 
-  // Trang 24h.com.vn
-  await this.driver.get("https://24h.com.vn/");
-  await sleep(3000);
+    const end = Date.now() + 20000;
 
-  const end = Date.now() + 20000;
+    while (Date.now() < end) {
+      const scroll = random(300, 700);
 
-  while (Date.now() < end) {
+      await this.driver.executeScript(`window.scrollBy(0, ${scroll})`);
 
-    const scroll = random(300,700);
+      await sleep(random(1000, 2500));
+    }
 
-    await this.driver.executeScript(`window.scrollBy(0, ${scroll})`);
-
-    await sleep(random(1000,2500));
-
+    console.log("Warmup finished");
   }
-
-  console.log("Warmup finished");
-
-}
   async startSurf() {
     attemptedAds = new Set();
-    await this.warmupProfile(); 
+    await this.warmupProfile();
     await this.login();
     await this.openSurfAds();
 
@@ -75,80 +73,68 @@ async warmupProfile() {
   }
 
   async login() {
+    const emailValue = this.account.username;
+    const passValue = this.account.password;
 
-  const emailValue = this.account.username;
-  const passValue = this.account.password;
+    console.log("Opening login page...");
 
-  console.log("Opening login page...");
+    await this.driver.get("https://www.coinpayu.com/login");
 
-  await this.driver.get("https://www.coinpayu.com/login");
+    await sleep(4000);
 
-  await sleep(4000);
+    // kiểm tra đã login chưa
+    const currentUrl = await this.driver.getCurrentUrl();
 
-  // kiểm tra đã login chưa
-  const currentUrl = await this.driver.getCurrentUrl();
+    if (!currentUrl.includes("/login")) {
+      console.log("Already logged in → skip login");
 
-  if (!currentUrl.includes("/login")) {
+      return;
+    }
 
-    console.log("Already logged in → skip login");
+    // thử tìm ô email
+    let emailInput;
 
-    return;
+    try {
+      emailInput = await this.driver.wait(
+        until.elementLocated(By.css("input[placeholder='Email']")),
+        5000,
+      );
+    } catch {
+      console.log("Login form not found → assume already logged in");
 
-  }
+      return;
+    }
 
-  // thử tìm ô email
-  let emailInput;
+    console.log("Typing email...");
 
-  try {
+    await emailInput.sendKeys(emailValue);
 
-    emailInput = await this.driver.wait(
-      until.elementLocated(By.css("input[placeholder='Email']")),
-      5000
+    await sleep(random(800, 1500));
+
+    const pass = await this.driver.findElement(
+      By.css("input[type='password']"),
     );
 
-  } catch {
+    console.log("Typing password...");
 
-    console.log("Login form not found → assume already logged in");
+    await pass.sendKeys(passValue);
 
-    return;
+    await sleep(random(1000, 2000));
 
+    const btn = await this.driver.findElement(By.css("button.cp-btn--primary"));
+
+    console.log("Click login");
+
+    await btn.click();
+
+    await this.driver.wait(async () => {
+      const url = await this.driver.getCurrentUrl();
+
+      return !url.includes("/login");
+    }, 20000);
+
+    console.log("Login success:", emailValue);
   }
-
-  console.log("Typing email...");
-
-  await emailInput.sendKeys(emailValue);
-
-  await sleep(random(800,1500));
-
-  const pass = await this.driver.findElement(
-    By.css("input[type='password']")
-  );
-
-  console.log("Typing password...");
-
-  await pass.sendKeys(passValue);
-
-  await sleep(random(1000,2000));
-
-  const btn = await this.driver.findElement(
-    By.css("button.cp-btn--primary")
-  );
-
-  console.log("Click login");
-
-  await btn.click();
-
-  await this.driver.wait(async () => {
-
-    const url = await this.driver.getCurrentUrl();
-
-    return !url.includes("/login");
-
-  }, 20000);
-
-  console.log("Login success:", emailValue);
-
-}
 
   async openSurfAds() {
     await this.driver.get("https://www.coinpayu.com/dashboard/ads_surf");
@@ -261,6 +247,10 @@ async warmupProfile() {
           }
 
           console.log("Still no ads → finish account");
+
+          fs.writeFileSync("blockedAds.json", JSON.stringify([], null, 2));
+
+          blockedAds = [];
 
           return {
             status: "DONE",

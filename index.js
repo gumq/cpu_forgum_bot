@@ -55,7 +55,15 @@ async function runAccounts() {
     await sleep(delay);
   }
 
-  console.log("All accounts finished");
+  const fs = require("fs");
+
+console.log("All accounts finished");
+
+// reset blocked ads
+fs.writeFileSync("blockedAds.json", "[]");
+
+console.log("blockedAds.json cleared");
+
 }
 
 cron.schedule("45 7 * * *", async () => {
