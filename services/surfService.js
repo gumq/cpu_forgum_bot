@@ -32,7 +32,7 @@ class SurfService {
 
     try {
       const search = await this.driver.findElement(By.name("q"));
-      await search.sendKeys("latest technology news\n");
+      await search.sendKeys("QMEDIA THUYẾT MINH videos\n");
     } catch {}
 
     await sleep(5000);
@@ -44,7 +44,7 @@ class SurfService {
     await sleep(20000);
 
     // Dailymotion video (xem 5s)
-    await this.driver.get("https://www.dailymotion.com/video/x84sh8y");
+    await this.driver.get("https://www.dailymotion.com/user/gumq/playlists");
     await sleep(5000);
 
     // Trang 24h.com.vn
