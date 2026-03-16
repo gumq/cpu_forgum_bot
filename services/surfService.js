@@ -3,11 +3,13 @@ const fs = require("fs");
 
 let blockedAds = [];
 let attemptedAds = new Set();
+
 try {
   blockedAds = JSON.parse(fs.readFileSync("blockedAds.json"));
 } catch {
   blockedAds = [];
 }
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -23,44 +25,73 @@ class SurfService {
   }
 
   async startSurf() {
-    await this.login();
+    attemptedAds = new Set();
 
+    await this.login();
     await this.openSurfAds();
 
     return await this.surfAdsLoop();
   }
 
-  async login() {
+async login() {
+
     const emailValue = this.account.username;
     const passValue = this.account.password;
 
+    console.log("Opening login page...");
+
+    await this.driver.get("https://www.coinpayu.com/login");
+
+    // đợi trang load
+    await sleep(4000);
+
     const email = await this.driver.wait(
-      until.elementLocated(By.css("input[placeholder='Email']")),
-      20000,
+        until.elementLocated(By.css("input[placeholder='Email']")),
+        20000
     );
+
+    // scroll tới form
+    await this.driver.executeScript(
+        "arguments[0].scrollIntoView({block:'center'})",
+        email
+    );
+
+    await sleep(random(800,1500));
+
+    console.log("Typing email...");
 
     await email.sendKeys(emailValue);
 
+    await sleep(random(800,1500));
+
     const pass = await this.driver.findElement(
-      By.css("input[type='password']"),
+        By.css("input[type='password']")
     );
+
+    console.log("Typing password...");
 
     await pass.sendKeys(passValue);
 
-    const btn = await this.driver.findElement(By.css("button.cp-btn--primary"));
+    await sleep(random(1000,2000));
+
+    const btn = await this.driver.findElement(
+        By.css("button.cp-btn--primary")
+    );
+
+    console.log("Click login");
 
     await btn.click();
 
-    console.log("Login clicked:", emailValue);
-
     await this.driver.wait(async () => {
-      const url = await this.driver.getCurrentUrl();
 
-      return !url.includes("/login");
+        const url = await this.driver.getCurrentUrl();
+
+        return !url.includes("/login");
+
     }, 20000);
 
-    console.log("Login success");
-  }
+    console.log("Login success:", emailValue);
+}
 
   async openSurfAds() {
     await this.driver.get("https://www.coinpayu.com/dashboard/ads_surf");
@@ -110,14 +141,20 @@ class SurfService {
 
     let refreshed = false;
     let completedAds = 0;
+
     while (true) {
       try {
         const ads = await this.driver.findElements(
           By.css(".ags-list-box:not(.gray-all)"),
         );
+
+        console.log("Total ads:", ads.length);
+
         const availableAds = [];
 
-        for (const box of ads) {
+        for (let i = 0; i < ads.length; i++) {
+          const box = ads[i];
+          const adId = "ad-" + i;
           try {
             let clickable;
 
@@ -127,21 +164,53 @@ class SurfService {
               clickable = await box.findElement(By.css("span"));
             }
 
-            let adUrl = "unknown";
+            let adUrl = "";
 
             try {
               adUrl = await clickable.getAttribute("href");
             } catch {}
 
-            const idMatch = adUrl.match(/id=(\d+)/);
-            const adId = idMatch ? idMatch[1] : adUrl;
+            let adId = null;
 
-            if (!attemptedAds.has(adId)) {
-              availableAds.push({ box, clickable, adId });
+            if (adUrl) {
+              const match = adUrl.match(/id=(\d+)/);
+              if (match) {
+                adId = match[1];
+              }
             }
+
+            if (!adId) {
+              adId = await box.getAttribute("data-id");
+            }
+
+            if (!adId) {
+              adId = await box.getAttribute("id");
+            }
+
+            if (!adId) {
+              console.log("Cannot detect adId → skip");
+              continue;
+            }
+
+            if (attemptedAds.has(adId)) {
+              console.log("Skip attempted ad:", adId);
+              continue;
+            }
+
+            if (blockedAds.includes(adId)) {
+              console.log("Skip blocked ad:", adId);
+              continue;
+            }
+
+            availableAds.push({
+              box,
+              clickable,
+              adId,
+            });
           } catch {}
         }
-        console.log("Total ads:", ads.length);
+
+        console.log("Available ads:", availableAds.length);
 
         if (availableAds.length === 0) {
           if (!refreshed) {
@@ -192,15 +261,9 @@ class SurfService {
 
             await this.simulateMouse();
 
-            if (attemptedAds.has(adId)) {
-              console.log("Skip attempted ad:", adId);
-
-              continue;
-            }
+            attemptedAds.add(adId);
 
             const oldTabs = await this.driver.getAllWindowHandles();
-
-            attemptedAds.add(adId);
 
             console.log("Click advertisement");
 
@@ -225,7 +288,6 @@ class SurfService {
 
             if (tabs.length === oldTabs.length) {
               console.log("Ad did not open");
-
               continue;
             }
 
@@ -233,7 +295,6 @@ class SurfService {
 
             if (!newTab) {
               console.log("No new tab detected");
-
               continue;
             }
 
@@ -260,7 +321,6 @@ class SurfService {
               );
 
               await this.driver.close();
-
               await this.driver.switchTo().window(mainTab);
 
               continue;
@@ -273,12 +333,11 @@ class SurfService {
             console.log("Closing ad tab");
 
             await this.driver.close();
-
             await this.driver.switchTo().window(mainTab);
 
             completedAds++;
 
-            const delay = random(4000,8000);
+            const delay = random(4000, 8000);
 
             console.log("Human delay:", delay);
 

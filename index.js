@@ -69,9 +69,7 @@ cron.schedule("24 19 * * *", async () => {
 
   await runAccounts();
 });
-cron.schedule("48 11 * * *", async () => {
-  console.log("Cron triggered at 10:32");
-
+cron.schedule("40 14 * * *", async () => {
   await randomStart(1); // test delay nhỏ
 
   await runAccounts();
