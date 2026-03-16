@@ -1,38 +1,73 @@
 const { Builder } = require("selenium-webdriver");
 const chrome = require("selenium-webdriver/chrome");
-
-const userAgents = [
-"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/145 Safari/537.36",
-"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/145 Safari/537.36",
-"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/145 Safari/537.36"
-];
-
-function randomUA() {
-
-    return userAgents[Math.floor(Math.random() * userAgents.length)];
-}
+const path = require("path");
+const os = require("os");
+const fs = require("fs");
 
 class BrowserService {
 
-    async startBrowser() {
+  async startBrowser(account) {
 
-        const options = new chrome.Options();
+    const options = new chrome.Options();
 
-        options.addArguments("--start-maximized");
-        options.addArguments("--disable-blink-features=AutomationControlled");
+    // folder chứa tất cả profile
+    const baseProfileDir = path.join(
+      os.homedir(),
+      "coinpayu-profiles"
+    );
 
-        options.addArguments(`--user-agent=${randomUA()}`);
+    // profile riêng cho từng account
+    const profileDir = path.join(
+      baseProfileDir,
+      account.username.replace(/[^a-zA-Z0-9]/g, "_")
+    );
 
-        const driver = await new Builder()
-            .forBrowser("chrome")
-            .setChromeOptions(options)
-            .build();
+    // tạo folder nếu chưa tồn tại
+    fs.mkdirSync(profileDir, { recursive: true });
 
-        await driver.get("https://www.coinpayu.com/login");
+    console.log("Using chrome profile:", profileDir);
 
-        return driver;
-    }
+    // dùng profile chrome thật
+    options.addArguments(`--user-data-dir=${profileDir}`);
 
+    // các flag giúp giống user thật hơn
+    options.addArguments("--start-maximized");
+    options.addArguments("--disable-blink-features=AutomationControlled");
+    options.addArguments("--disable-infobars");
+    options.addArguments("--lang=en-US");
+
+    // tránh crash chrome (nhất là VPS)
+    options.addArguments("--no-sandbox");
+    options.addArguments("--disable-dev-shm-usage");
+
+    const driver = await new Builder()
+      .forBrowser("chrome")
+      .setChromeOptions(options)
+      .build();
+
+    // ẩn webdriver flag
+    await driver.executeScript(`
+      Object.defineProperty(navigator, 'webdriver', {
+        get: () => undefined
+      });
+    `);
+
+    // fake platform / languages giống user
+    await driver.executeScript(`
+      Object.defineProperty(navigator, 'platform', {
+        get: () => 'Win32'
+      });
+
+      Object.defineProperty(navigator, 'languages', {
+        get: () => ['en-US','en']
+      });
+    `);
+
+    // mở trang login
+    await driver.get("https://www.coinpayu.com/login");
+
+    return driver;
+  }
 }
 
 module.exports = BrowserService;

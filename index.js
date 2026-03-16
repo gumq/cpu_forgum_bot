@@ -30,7 +30,7 @@ async function runAccounts() {
     console.log("Start account:", acc.username);
     // await sendTelegram(`Start account ${acc.username}`);
     const browser = new BrowserService();
-    const driver = await browser.startBrowser();
+    const driver = await browser.startBrowser(acc);
 
     const surf = new SurfService(driver, acc);
 
@@ -64,13 +64,13 @@ cron.schedule("45 7 * * *", async () => {
   await runAccounts();
 });
 
-cron.schedule("24 19 * * *", async () => {
+cron.schedule("24 20 * * *", async () => {
   await randomStart(35);
 
   await runAccounts();
 });
-cron.schedule("59 14 * * *", async () => {
-  await randomStart(1); // test delay nhỏ
+cron.schedule("57 15 * * *", async () => {
+  // await randomStart(1); // test delay nhỏ
 
   await runAccounts();
 });
