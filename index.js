@@ -66,23 +66,28 @@ console.log("blockedAds.json cleared");
 
 }
 
-cron.schedule("45 7 * * *", async () => {
-  await randomStart(35);
+cron.schedule("24 07 * * *", async () => {
+  await randomStart(32);
 
   await runAccounts();
 });
 
-cron.schedule("24 20 * * *", async () => {
+cron.schedule("20 13 * * *", async () => {
   await randomStart(35);
 
   await runAccounts();
 });
-cron.schedule("24 02 * * *", async () => {s
+cron.schedule("24 18 * * *", async () => {
   await randomStart(35);
 
   await runAccounts();
 });
-cron.schedule("17 17 * * *", async () => {
+cron.schedule("24 03 * * *", async () => {
+  await randomStart(35);
+
+  await runAccounts();
+});
+cron.schedule("13 10 * * *", async () => {
   // await randomStart(1); // test delay nhỏ
 
   await runAccounts();
